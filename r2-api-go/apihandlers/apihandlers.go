@@ -63,15 +63,13 @@ func writeJson(param string, value string, w http.ResponseWriter) {
 }
 
 func UploadImage(w http.ResponseWriter, r *http.Request) {
-	r.ParseMultipartForm(10 << 20) // 10 MB limit
-	file, header, err := r.FormFile("file")
-	if err != nil {
-		http.Error(w, "Error retrieving the file", http.StatusInternalServerError)
+	tempFilename := r.URL.Query().Get("fileName")
+
+	if tempFilename == "" {
+		http.Error(w, "Filename is required", http.StatusBadRequest)
 		return
 	}
-	defer file.Close()
 
-	tempFilename := header.Filename
 	fmt.Println("Uploaded Filename:", tempFilename)
 	tempFilePath := filepath.Join("uploads", tempFilename)
 
@@ -82,7 +80,7 @@ func UploadImage(w http.ResponseWriter, r *http.Request) {
 	}
 	defer cleanTemp(tempFilePath, dst)
 
-	_, err = io.Copy(dst, file)
+	_, err = io.Copy(dst, r.Body)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Unable to save the file: %v", err), http.StatusInternalServerError)
 		return
