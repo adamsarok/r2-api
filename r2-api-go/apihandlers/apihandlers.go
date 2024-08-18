@@ -1,9 +1,17 @@
 package apihandlers
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"r2-api-go/r2-api-go/r2"
+
+	"github.com/disintegration/imaging"
+	"github.com/google/uuid"
 )
 
 func GenerateUploadURL(w http.ResponseWriter, r *http.Request) {
@@ -55,20 +63,125 @@ func writeJson(param string, value string, w http.ResponseWriter) {
 }
 
 func UploadImage(w http.ResponseWriter, r *http.Request) {
-	//generateUploadURL(w, r);
+	r.ParseMultipartForm(10 << 20) // 10 MB limit
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "Error retrieving the file", http.StatusInternalServerError)
+		return
+	}
+	defer file.Close()
 
-	// img, err := imaging.Open("input.jpg")
-	// if err != nil {
-	//     panic(err)
-	// }
+	tempFilename := header.Filename
+	fmt.Println("Uploaded Filename:", tempFilename)
+	tempFilePath := filepath.Join("uploads", tempFilename)
 
-	// // Resize the image to width 800 preserving the aspect ratio
-	// img = imaging.Resize(img, 800, 0, imaging.Lanczos)
+	dst, err := os.Create(tempFilePath)
+	if err != nil {
+		http.Error(w, "Unable to create the file on disk", http.StatusInternalServerError)
+		return
+	}
+	defer cleanTemp(tempFilePath, dst)
 
-	// // Save the resulting image as JPEG
-	// err = imaging.Save(img, "output.jpg")
-	// if err != nil {
-	//     panic(err)
-	// }
+	_, err = io.Copy(dst, file)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Unable to save the file: %v", err), http.StatusInternalServerError)
+		return
+	}
 
+	guid := uuid.New().String()
+	filePath := saveImageFromRequest(w, tempFilePath, guid)
+
+	uploadUrl, err := r2.GenerateUploadURL(guid)
+	if err != nil {
+		http.Error(w, "Error generating R2 upload URL: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	uploadToUrl(w, uploadUrl, filePath)
+
+	writeJson("objectKey", guid, w)
 }
+
+func cleanTemp(tempFilePath string, dst *os.File) {
+	dst.Close()
+	os.Remove(tempFilePath)
+}
+
+func saveImageFromRequest(w http.ResponseWriter, tempFilePath string, guid string) string {
+
+	srcImage, err := imaging.Open(tempFilePath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Unable to open the iamge file: %v", err), http.StatusInternalServerError)
+		return ""
+	}
+
+	srcImage = imaging.Resize(srcImage, 400, 0, imaging.Lanczos)
+
+	outputPath := filepath.Join("uploads", guid+".jpg")
+	file, err := os.Create(outputPath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to create file:  %v", err), http.StatusInternalServerError)
+		return ""
+	}
+	defer file.Close()
+
+	//err = imaging.Save(srcImage, outputPath)
+	err = imaging.Encode(file, srcImage, imaging.JPEG, imaging.JPEGQuality(80))
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Unable to convert the image file: %v", err), http.StatusInternalServerError)
+		return ""
+	}
+
+	return outputPath
+}
+
+func uploadToUrl(w http.ResponseWriter, uploadUrl *string, fileName string) {
+	file, err := os.Open(fileName)
+	if err != nil {
+		http.Error(w, "Error opening file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer file.Close()
+
+	var fileBuffer bytes.Buffer
+	_, err = io.Copy(&fileBuffer, file)
+	if err != nil {
+		http.Error(w, "Error reading file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	req, err := http.NewRequest("PUT", *uploadUrl, &fileBuffer)
+	if err != nil {
+		http.Error(w, "Error creating request:"+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	req.Header.Set("Content-Type", "image/jpeg")
+	req.ContentLength = int64(fileBuffer.Len())
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		http.Error(w, "Error sending request:"+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		http.Error(w, "Error sending request:", http.StatusInternalServerError)
+		return
+	}
+}
+
+// func saveFile(r *http.Request, fileName string) error {
+// 	filePath := filepath.Join("uploads", fileName)
+// 	out, err := os.Create(filePath)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer out.Close()
+
+// 	_, err = io.Copy(out, r.Body)
+// 	if err != nil {
+// 		return err
+// 	}
+// }
