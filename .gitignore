@@ -52,3 +52,5 @@ _testmain.go
 # For example, set up .git/info/exclude or use a global .gitignore.
 
 config.yml
+
+r2-api-go/uploads/*
