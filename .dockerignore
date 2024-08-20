@@ -1,0 +1,6 @@
+**/config.yml
+**/config.enc.yml
+**/*.exe
+
+r2-api-go/uploads/*
+
