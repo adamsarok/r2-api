@@ -11,12 +11,14 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 #copy source code
-COPY r2-api-go/ ./
+COPY ./ ./
 
 #WORKDIR /r2-api-go
 
 #compile
-#RUN CGO_ENABLED=0 GOOS=linux go build -o /r2-api-go
+RUN CGO_ENABLED=0 GOOS=linux go build -o /r2-api-go
+
+EXPOSE 8080
 
 #what command to run, when container is started from this image
-#CMD ["/r2-api-go"]
+CMD ["/r2-api-go"]

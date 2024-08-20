@@ -4,8 +4,8 @@ import (
 	"log"
 	"net/http"
 
-	"r2-api-go/r2-api-go/apihandlers"
-	"r2-api-go/r2-api-go/r2"
+	"r2-api-go/apihandlers"
+	"r2-api-go/r2"
 
 	"github.com/gorilla/mux"
 )

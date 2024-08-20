@@ -1,6 +1,7 @@
 **/config.yml
 **/config.enc.yml
 **/*.exe
+**/Dockerfile
 
-r2-api-go/uploads/*
-
+uploads/*
+out/

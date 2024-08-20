@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"r2-api-go/r2-api-go/r2"
+	"r2-api-go/r2"
 
 	"github.com/disintegration/imaging"
 	"github.com/google/uuid"
