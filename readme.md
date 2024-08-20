@@ -1,3 +1,5 @@
+Microservice to enable image download/upload to an R2 compatible cloud host.
+
 #sops:
 gcloud auth login
 #on new installation: gcloud auth application-default login
