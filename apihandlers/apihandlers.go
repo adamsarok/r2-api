@@ -3,11 +3,14 @@ package apihandlers
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"r2-api-go/cache"
 	"r2-api-go/r2"
 
 	"github.com/disintegration/imaging"
@@ -30,20 +33,35 @@ func GenerateUploadURL(w http.ResponseWriter, r *http.Request) {
 	writeJson("uploadURL", *uploadURL, w)
 }
 
-func GenerateDownloadURL(w http.ResponseWriter, r *http.Request) {
+func getObjectKey(r *http.Request) (string, error) {
 	objectKey := r.URL.Query().Get("key")
 	if objectKey == "" {
-		http.Error(w, "Missing 'key' query parameter", http.StatusBadRequest)
+		return "", errors.New("missing 'key' query parameter")
+	}
+	return objectKey, nil
+}
+
+func GenerateDownloadURL(w http.ResponseWriter, r *http.Request) {
+	objectKey, err := getObjectKey(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	downloadURL, err := generateDownloadURL(objectKey)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	writeJson("downloadURL", downloadURL, w)
+}
+
+func generateDownloadURL(objectKey string) (string, error) {
 	downloadURL, err := r2.GenerateDownloadURL(objectKey)
 	if err != nil {
-		http.Error(w, "Failed to generate download URL "+err.Error(), http.StatusInternalServerError)
-		return
+		return "", errors.New("failed to generate download URL")
 	}
-
-	writeJson("downloadURL", *downloadURL, w)
+	return *downloadURL, nil
 }
 
 func writeJson(param string, value string, w http.ResponseWriter) {
@@ -170,16 +188,58 @@ func uploadToUrl(w http.ResponseWriter, uploadUrl *string, fileName string) {
 	}
 }
 
-// func saveFile(r *http.Request, fileName string) error {
-// 	filePath := filepath.Join("uploads", fileName)
-// 	out, err := os.Create(filePath)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer out.Close()
+func GetCachedImage(w http.ResponseWriter, r *http.Request) {
+	objectKey, err := getObjectKey(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-// 	_, err = io.Copy(out, r.Body)
-// 	if err != nil {
-// 		return err
-// 	}
-// }
+	imageData, found := cache.GetImage(objectKey)
+
+	if !found {
+		downloadUrl, err := generateDownloadURL(objectKey)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		resp, err := http.Get(downloadUrl)
+		if err != nil {
+			http.Error(w, "failed to download image: %v"+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			http.Error(w, fmt.Sprintf("unexpected status code: %d", resp.StatusCode), http.StatusInternalServerError)
+			return
+		}
+
+		imageData, err = io.ReadAll(resp.Body)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("failed to read image data: %v", err), http.StatusInternalServerError)
+			return
+		}
+
+		if imageData == nil {
+			http.Error(w, "empty image file returned from R2", http.StatusInternalServerError)
+			return
+		}
+
+		cache.AddImage(objectKey, imageData)
+	}
+
+	//imageData, found = cache.GetImage(objectKey)
+
+	w.Header().Set("Content-Type", "image/jpeg") // Assuming JPEG for this example
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(imageData)))
+	w.WriteHeader(http.StatusOK)
+
+	bytesWritten, err := w.Write(imageData)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error writing image data to response: %v", err), http.StatusInternalServerError)
+		return
+	}
+	log.Printf("Wrote %d bytes to response", bytesWritten)
+}

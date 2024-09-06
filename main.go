@@ -18,6 +18,7 @@ func main() {
 	router.HandleFunc("/generate-upload-url", apihandlers.GenerateUploadURL).Methods("GET")
 	router.HandleFunc("/generate-download-url", apihandlers.GenerateDownloadURL).Methods("GET")
 	router.HandleFunc("/upload-image", apihandlers.UploadImage).Methods("PUT")
+	router.HandleFunc("/cached-image", apihandlers.GetCachedImage).Methods("GET")
 
 	log.Println("Server started at :8080")
 	log.Fatal(http.ListenAndServe(":8080", router))
