@@ -2,7 +2,6 @@ package apihandlers
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -18,14 +17,6 @@ import (
 	"github.com/google/uuid"
 )
 
-func getObjectKey(r *http.Request) (string, error) {
-	objectKey := r.URL.Query().Get("key")
-	if objectKey == "" {
-		return "", errors.New("missing 'key' query parameter")
-	}
-	return objectKey, nil
-}
-
 func generateDownloadURL(objectKey string) (string, error) {
 	downloadURL, err := r2.GenerateDownloadURL(objectKey)
 	if err != nil {
@@ -34,22 +25,20 @@ func generateDownloadURL(objectKey string) (string, error) {
 	return *downloadURL, nil
 }
 
-func getJson(param string, value string) ([]byte, error) {
-	response := map[string]string{
-		param: value,
-	}
+// func getJson(param string, value string) ([]byte, error) {
+// 	response := map[string]string{
+// 		param: value,
+// 	}
 
-	//w.Header().Set("Content-Type", "application/json")
+// 	jsonResponse, err := json.Marshal(response)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	jsonResponse, err := json.Marshal(response)
-	if err != nil {
-		return nil, err
-	}
+// 	return jsonResponse, nil
+// }
 
-	return jsonResponse, nil
-}
-
-func UploadImageGin(c *gin.Context) {
+func UploadImage(c *gin.Context) {
 	tempFilename := c.Query("fileName")
 	if tempFilename == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Filename is required"})
@@ -73,7 +62,7 @@ func UploadImageGin(c *gin.Context) {
 	}
 
 	guid := uuid.New().String()
-	filePath, err := saveImageFromRequest2(tempFilePath, guid)
+	filePath, err := saveImageFromRequest(tempFilePath, guid)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Unable to save the file: %v", err)})
 		return
@@ -85,15 +74,20 @@ func UploadImageGin(c *gin.Context) {
 		return
 	}
 
-	uploadToUrl2(uploadUrl, filePath)
-
-	json, err := getJson("objectKey", guid)
+	err = uploadToUrl(uploadUrl, filePath)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Error generating R2 upload URL: %v", err)})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Error uploading to R2 upload URL: %v", err)})
 		return
 	}
-	//w.Header().Set("Content-Type", "application/json")
-	c.JSON(http.StatusOK, json)
+
+	// json, err := getJson("objectKey", guid)
+	// if err != nil {
+	// 	c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Error generating R2 upload URL: %v", err)})
+	// 	return
+	// }
+
+	c.JSON(http.StatusOK, gin.H{"guid": guid})
+	//c.JSON(http.StatusOK, json)
 }
 
 func cleanTemp(tempFilePath string, dst *os.File) {
@@ -101,7 +95,7 @@ func cleanTemp(tempFilePath string, dst *os.File) {
 	os.Remove(tempFilePath)
 }
 
-func saveImageFromRequest2(tempFilePath string, guid string) (string, error) {
+func saveImageFromRequest(tempFilePath string, guid string) (string, error) {
 
 	srcImage, err := imaging.Open(tempFilePath)
 	if err != nil {
@@ -125,7 +119,7 @@ func saveImageFromRequest2(tempFilePath string, guid string) (string, error) {
 	return outputPath, nil
 }
 
-func uploadToUrl2(uploadUrl *string, fileName string) error {
+func uploadToUrl(uploadUrl *string, fileName string) error {
 	file, err := os.Open(fileName)
 	if err != nil {
 		return err
@@ -158,7 +152,7 @@ func uploadToUrl2(uploadUrl *string, fileName string) error {
 	return nil
 }
 
-func GetCachedImageGin(c *gin.Context) {
+func GetCachedImage(c *gin.Context) {
 	objectKey := c.Query("key") // Assuming the object key is passed as a query parameter
 	if objectKey == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing 'key' query parameter"})

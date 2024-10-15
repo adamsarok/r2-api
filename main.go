@@ -28,8 +28,8 @@ func main() {
 
 	r.Use(cors.New(config))
 
-	r.PUT("/upload-image", apihandlers.UploadImageGin)
-	r.GET("/cached-image", apihandlers.GetCachedImageGin)
+	r.PUT("/upload-image", apihandlers.UploadImage)
+	r.GET("/cached-image", apihandlers.GetCachedImage)
 
 	port := ":8080"
 	log.Printf("Server started at %s", port)
