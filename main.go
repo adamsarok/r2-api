@@ -5,17 +5,14 @@ import (
 	"time"
 
 	"r2-api-go/apihandlers"
-	"r2-api-go/r2"
+	"r2-api-go/config"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	r2.Init()
-
-	//router.HandleFunc("/generate-upload-url", apihandlers.GenerateUploadURL).Methods("GET")
-	//router.HandleFunc("/generate-download-url", apihandlers.GenerateDownloadURL).Methods("GET")
+	config.Init()
 
 	r := gin.Default()
 	config := cors.DefaultConfig()

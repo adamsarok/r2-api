@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"r2-api-go/cache"
+	"r2-api-go/config"
 	"r2-api-go/r2"
 
 	"github.com/disintegration/imaging"
@@ -24,19 +25,6 @@ func generateDownloadURL(objectKey string) (string, error) {
 	}
 	return *downloadURL, nil
 }
-
-// func getJson(param string, value string) ([]byte, error) {
-// 	response := map[string]string{
-// 		param: value,
-// 	}
-
-// 	jsonResponse, err := json.Marshal(response)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return jsonResponse, nil
-// }
 
 func UploadImage(c *gin.Context) {
 	tempFilename := c.Query("fileName")
@@ -80,14 +68,7 @@ func UploadImage(c *gin.Context) {
 		return
 	}
 
-	// json, err := getJson("objectKey", guid)
-	// if err != nil {
-	// 	c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Error generating R2 upload URL: %v", err)})
-	// 	return
-	// }
-
 	c.JSON(http.StatusOK, gin.H{"guid": guid})
-	//c.JSON(http.StatusOK, json)
 }
 
 func cleanTemp(tempFilePath string, dst *os.File) {
@@ -104,7 +85,7 @@ func saveImageFromRequest(tempFilePath string, guid string) (string, error) {
 
 	srcImage = imaging.Resize(srcImage, 400, 0, imaging.Lanczos)
 
-	outputPath := filepath.Join("uploads", guid+".jpg")
+	outputPath := filepath.Join(config.Configs.Cache_Dir, guid+".jpg")
 	file, err := os.Create(outputPath)
 	if err != nil {
 		return "", err
