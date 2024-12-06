@@ -50,4 +50,4 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: fuzzydice555/r2-api-go:latest
+          tags: adamsarok/r2-api-go:latest
