@@ -15,6 +15,7 @@ func main() {
 	config.Init()
 
 	r := gin.Default()
+	r.Use(gin.Logger())
 	config := cors.DefaultConfig()
 	config.AllowAllOrigins = true //TODO: config, do not allow all
 	config.AllowMethods = []string{"POST", "GET", "PUT", "OPTIONS"}
