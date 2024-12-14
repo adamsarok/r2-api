@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 	"time"
 
 	"r2-api-go/apihandlers"
@@ -12,10 +13,20 @@ import (
 )
 
 func main() {
+	uploadsDir := "uploads"
+	if _, err := os.Stat(uploadsDir); os.IsNotExist(err) {
+		err := os.Mkdir(uploadsDir, os.ModePerm)
+		if err != nil {
+			log.Fatalf("Failed to create uploads directory: %v", err)
+		}
+	}
+
 	config.Init()
 
+	gin.SetMode(gin.ReleaseMode)
+
 	r := gin.Default()
-	r.Use(gin.Logger())
+
 	config := cors.DefaultConfig()
 	config.AllowAllOrigins = true //TODO: config, do not allow all
 	config.AllowMethods = []string{"POST", "GET", "PUT", "OPTIONS"}
