@@ -17,7 +17,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o /r2-api-go
 
 # Start a new stage from scratch
-FROM alpine:latest
+FROM alpine:3.21.3
 
 # Copy the Pre-built binary file from the previous stage
 COPY --from=builder /r2-api-go /r2-api-go

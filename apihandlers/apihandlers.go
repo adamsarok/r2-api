@@ -18,6 +18,9 @@ import (
 	"github.com/google/uuid"
 )
 
+const unableToSaveFileError = "Unable to save the file: %v"
+const imageJpeg = "image/jpeg"
+
 func generateDownloadURL(objectKey string) (string, error) {
 	downloadURL, err := r2.GenerateDownloadURL(objectKey)
 	if err != nil {
@@ -38,21 +41,21 @@ func UploadImage(c *gin.Context) {
 
 	dst, err := os.Create(tempFilePath)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Unable to save the file: %v", err)})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf(unableToSaveFileError, err)})
 		return
 	}
 	defer cleanTemp(tempFilePath, dst)
 
 	_, err = io.Copy(dst, c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Unable to save the file: %v", err)})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf(unableToSaveFileError, err)})
 		return
 	}
 
 	guid := uuid.New().String()
 	filePath, err := saveImageFromRequest(tempFilePath, guid)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Unable to save the file: %v", err)})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf(unableToSaveFileError, err)})
 		return
 	}
 
@@ -118,7 +121,7 @@ func uploadToUrl(uploadUrl *string, fileName string) error {
 		return err
 	}
 
-	req.Header.Set("Content-Type", "image/jpeg")
+	req.Header.Set("Content-Type", imageJpeg)
 	req.ContentLength = int64(fileBuffer.Len())
 
 	client := &http.Client{}
@@ -175,8 +178,8 @@ func GetCachedImage(c *gin.Context) {
 		cache.AddImage(objectKey, imageData)
 	}
 
-	c.Header("Content-Type", "image/jpeg")
+	c.Header("Content-Type", imageJpeg)
 	c.Header("Content-Length", fmt.Sprintf("%d", len(imageData)))
-	c.Data(http.StatusOK, "image/jpeg", imageData)
+	c.Data(http.StatusOK, imageJpeg, imageData)
 	log.Printf("Wrote %d bytes to response", len(imageData))
 }
