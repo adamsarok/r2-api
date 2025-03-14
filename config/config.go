@@ -47,5 +47,5 @@ func Init() {
 		log.Fatalf("Error unmarshaling config: %v", err)
 	}
 
-	log.Printf("Configuration loaded: %+v", Configs)
+	log.Printf("Configuration loaded")
 }
