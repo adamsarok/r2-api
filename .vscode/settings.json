@@ -1,0 +1,6 @@
+{
+    "sonarlint.connectedMode.project": {
+        "connectionId": "adamsarok",
+        "projectKey": "adamsarok_r2-api"
+    }
+}
